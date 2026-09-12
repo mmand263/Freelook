@@ -4,6 +4,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import org.freelook.camera.FreeLookManager;
+import org.freelook.config.FreeLookConfig;
 import org.freelook.input.KeybindManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +18,8 @@ public class FreeLookClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        LOGGER.info("[FreeLook] Initializing FreeLook & Smooth Zoom mod for Minecraft 1.20.4...");
+        // Load configuration
+        FreeLookConfig.getInstance().load();
 
         // Register keybindings
         KeybindManager.register();
