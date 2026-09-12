@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "freelook",
+  "version": "${version}",
+  "name": "FreeLook",
+  "description": "프리룩 모드",
+  "authors": [
+    "YouTubeKorea"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/freelook/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "org.freelook.FreeLookClient"
+    ]
+  },
+  "mixins": [
+    "freelook.client.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
