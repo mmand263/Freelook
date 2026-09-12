@@ -2,6 +2,7 @@ package org.freelook.camera;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.entity.Entity;
 import net.minecraft.util.math.MathHelper;
 import org.freelook.config.FreeLookConfig;
 import org.freelook.input.KeybindManager;
@@ -68,40 +69,30 @@ public class FreeLookManager {
         }
 
         FreeLookConfig config = FreeLookConfig.getInstance();
+        boolean wasExiting = (state == FreeLookState.EXITING_FREELOOK);
 
-        if (state == FreeLookState.NORMAL) {
-            state = FreeLookState.ENTERING_FREELOOK;
-            transitionProgress = 0.0f;
+        state = FreeLookState.ENTERING_FREELOOK;
+        transitionProgress = 0.0f;
 
-            // Pick up the exact sub-tick orientation rendered on the preceding frame
-            startTransitionYaw = (lastFrameTimeNanos > 0) ? lastRenderedYaw : player.getYaw();
-            startTransitionPitch = (lastFrameTimeNanos > 0) ? lastRenderedPitch : player.getPitch();
+        // Reset camera angle to the entity's current view orientation (original state)
+        Entity entity = (client != null && client.cameraEntity != null) ? client.cameraEntity : player;
+        float initialYaw = entity.getYaw();
+        float initialPitch = entity.getPitch();
 
-            targetCameraYaw = startTransitionYaw;
-            targetCameraPitch = startTransitionPitch;
-            currentCameraYaw = startTransitionYaw;
-            currentCameraPitch = startTransitionPitch;
+        startTransitionYaw = initialYaw;
+        startTransitionPitch = initialPitch;
+        targetCameraYaw = initialYaw;
+        targetCameraPitch = initialPitch;
+        currentCameraYaw = initialYaw;
+        currentCameraPitch = initialPitch;
+        lastRenderedYaw = initialYaw;
+        lastRenderedPitch = initialPitch;
 
-            lastRenderedYaw = startTransitionYaw;
-            lastRenderedPitch = startTransitionPitch;
-
-            startTransitionDistance = wasFirstPerson ? 0.0f : config.getDefaultDistance();
-            currentDistance = startTransitionDistance;
-            ZoomController.getInstance().resetTargetDistance();
-        } else if (state == FreeLookState.EXITING_FREELOOK) {
-            // Re-entering FreeLook before exit animation completed: smoothly reverse
-            state = FreeLookState.ENTERING_FREELOOK;
-            transitionProgress = 0.0f;
-
-            startTransitionYaw = lastRenderedYaw;
-            startTransitionPitch = lastRenderedPitch;
-
-            targetCameraYaw = currentCameraYaw;
-            targetCameraPitch = currentCameraPitch;
-
-            startTransitionDistance = currentDistance;
-            ZoomController.getInstance().resetTargetDistance();
-        }
+        startTransitionDistance = (wasExiting && currentDistance > 0.001f)
+                ? currentDistance
+                : (wasFirstPerson ? 0.0f : config.getDefaultDistance());
+        currentDistance = startTransitionDistance;
+        ZoomController.getInstance().resetTargetDistance();
     }
 
     /**
@@ -134,6 +125,17 @@ public class FreeLookManager {
         wasFirstPerson = true;
         currentDistance = 0.0f;
         ZoomController.getInstance().resetImmediately();
+
+        targetCameraYaw = 0.0f;
+        targetCameraPitch = 0.0f;
+        currentCameraYaw = 0.0f;
+        currentCameraPitch = 0.0f;
+        startTransitionYaw = 0.0f;
+        startTransitionPitch = 0.0f;
+        exitStartYaw = 0.0f;
+        exitStartPitch = 0.0f;
+        lastRenderedYaw = 0.0f;
+        lastRenderedPitch = 0.0f;
     }
 
     /**
@@ -239,10 +241,7 @@ public class FreeLookManager {
             exitProgress += dt / duration;
             float returnDist = wasFirstPerson ? 0.0f : config.getDefaultDistance();
             if (exitProgress >= 1.0f) {
-                exitProgress = 1.0f;
-                currentDistance = returnDist;
-                state = FreeLookState.NORMAL;
-                ZoomController.getInstance().resetImmediately();
+                reset();
             } else {
                 float eased = easeOutCubic(exitProgress);
                 currentDistance = MathHelper.lerp(eased, exitStartDistance, returnDist);
