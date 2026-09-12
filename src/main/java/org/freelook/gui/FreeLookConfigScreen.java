@@ -24,7 +24,7 @@ import java.util.function.Consumer;
 
 /**
  * In-game configuration screen for FreeLook, accessible via ModMenu.
- * Provides controls for transition duration, mouse wheel zoom step, smoothing, distances, and camera controls.
+ * Provides controls for zoom-in/zoom-out transition durations, wheel steps, smoothing, distances, and camera controls.
  */
 public class FreeLookConfigScreen extends Screen {
     private final Screen parent;
@@ -32,15 +32,18 @@ public class FreeLookConfigScreen extends Screen {
 
     // Temporary working state
     private float cameraSensitivity;
+    private boolean smoothCamera;
     private float cameraSmoothing;
-    private float transitionDuration;
+    private float zoomOutDuration;
+    private float zoomInDuration;
     private boolean invertX;
     private boolean invertY;
 
     private float defaultDistance;
     private float minDistance;
     private float maxDistance;
-    private float distanceStep;
+    private float zoomInStep;
+    private float zoomOutStep;
     private float zoomSmoothing;
     private boolean invertScroll;
 
@@ -56,15 +59,18 @@ public class FreeLookConfigScreen extends Screen {
     private void loadCurrentValues() {
         FreeLookConfig config = FreeLookConfig.getInstance();
         this.cameraSensitivity = config.getCameraSensitivity();
+        this.smoothCamera = config.isSmoothCamera();
         this.cameraSmoothing = config.getCameraSmoothing();
-        this.transitionDuration = config.getTransitionDuration();
+        this.zoomOutDuration = config.getZoomOutDuration();
+        this.zoomInDuration = config.getZoomInDuration();
         this.invertX = config.isInvertX();
         this.invertY = config.isInvertY();
 
         this.defaultDistance = config.getDefaultDistance();
         this.minDistance = config.getMinDistance();
         this.maxDistance = config.getMaxDistance();
-        this.distanceStep = config.getDistanceStep();
+        this.zoomInStep = config.getZoomInStep();
+        this.zoomOutStep = config.getZoomOutStep();
         this.zoomSmoothing = config.getZoomSmoothing();
         this.invertScroll = config.isInvertScroll();
     }
@@ -72,15 +78,18 @@ public class FreeLookConfigScreen extends Screen {
     private void saveAndApplyValues() {
         FreeLookConfig config = FreeLookConfig.getInstance();
         config.setCameraSensitivity(this.cameraSensitivity);
+        config.setSmoothCamera(this.smoothCamera);
         config.setCameraSmoothing(this.cameraSmoothing);
-        config.setTransitionDuration(this.transitionDuration);
+        config.setZoomOutDuration(this.zoomOutDuration);
+        config.setZoomInDuration(this.zoomInDuration);
         config.setInvertX(this.invertX);
         config.setInvertY(this.invertY);
 
         config.setDefaultDistance(this.defaultDistance);
         config.setMinDistance(this.minDistance);
         config.setMaxDistance(this.maxDistance);
-        config.setDistanceStep(this.distanceStep);
+        config.setZoomInStep(this.zoomInStep);
+        config.setZoomOutStep(this.zoomOutStep);
         config.setZoomSmoothing(this.zoomSmoothing);
         config.setInvertScroll(this.invertScroll);
 
@@ -99,52 +108,67 @@ public class FreeLookConfigScreen extends Screen {
         // ==================== CATEGORY 1: ZOOM & TRANSITION ====================
         this.list.addCategory(Text.translatable("freelook.config.category.zoom").formatted(Formatting.YELLOW, Formatting.BOLD));
 
-        // Row 1: Transition Duration & Wheel Zoom Step (The primary requested options!)
-        ConfigSliderWidget transitionSlider = new ConfigSliderWidget(
-                "freelook.config.transition_duration", "freelook.config.transition_duration.tooltip",
-                0.05, 1.00, 0.01, 2, this.transitionDuration,
-                val -> this.transitionDuration = val, 0.18f
+        // Row 1: Zoom-Out Duration & Zoom-In Duration
+        ConfigSliderWidget zoomOutDurSlider = new ConfigSliderWidget(
+                "freelook.config.zoom_out_duration", "freelook.config.zoom_out_duration.tooltip",
+                0.05, 1.00, 0.01, 2, this.zoomOutDuration,
+                val -> this.zoomOutDuration = val, 0.18f, null
         );
-        ConfigSliderWidget stepSlider = new ConfigSliderWidget(
-                "freelook.config.distance_step", "freelook.config.distance_step.tooltip",
-                0.10, 5.00, 0.05, 2, this.distanceStep,
-                val -> this.distanceStep = val, 1.25f
+        ConfigSliderWidget zoomInDurSlider = new ConfigSliderWidget(
+                "freelook.config.zoom_in_duration", "freelook.config.zoom_in_duration.tooltip",
+                0.00, 1.00, 0.01, 2, this.zoomInDuration,
+                val -> this.zoomInDuration = val, 0.00f, "freelook.config.zoom_in_duration.instant"
         );
-        this.resettables.add(transitionSlider);
-        this.resettables.add(stepSlider);
-        this.list.addEntry(new TwoWidgetEntry(transitionSlider, stepSlider));
+        this.resettables.add(zoomOutDurSlider);
+        this.resettables.add(zoomInDurSlider);
+        this.list.addEntry(new TwoWidgetEntry(zoomOutDurSlider, zoomInDurSlider));
 
-        // Row 2: Default Distance & Zoom Smoothing
+        // Row 2: Wheel Zoom-Out Step & Wheel Zoom-In Step
+        ConfigSliderWidget zoomOutStepSlider = new ConfigSliderWidget(
+                "freelook.config.zoom_out_step", "freelook.config.zoom_out_step.tooltip",
+                0.10, 5.00, 0.05, 2, this.zoomOutStep,
+                val -> this.zoomOutStep = val, 1.25f, null
+        );
+        ConfigSliderWidget zoomInStepSlider = new ConfigSliderWidget(
+                "freelook.config.zoom_in_step", "freelook.config.zoom_in_step.tooltip",
+                0.10, 5.00, 0.05, 2, this.zoomInStep,
+                val -> this.zoomInStep = val, 1.25f, null
+        );
+        this.resettables.add(zoomOutStepSlider);
+        this.resettables.add(zoomInStepSlider);
+        this.list.addEntry(new TwoWidgetEntry(zoomOutStepSlider, zoomInStepSlider));
+
+        // Row 3: Default Distance & Zoom Smoothing
         ConfigSliderWidget defaultDistSlider = new ConfigSliderWidget(
                 "freelook.config.default_distance", "freelook.config.default_distance.tooltip",
                 1.0, 15.0, 0.5, 1, this.defaultDistance,
-                val -> this.defaultDistance = val, 4.0f
+                val -> this.defaultDistance = val, 4.0f, null
         );
         ConfigSliderWidget zoomSmoothSlider = new ConfigSliderWidget(
                 "freelook.config.zoom_smoothing", "freelook.config.zoom_smoothing.tooltip",
                 2.0, 30.0, 1.0, 0, this.zoomSmoothing,
-                val -> this.zoomSmoothing = val, 14.0f
+                val -> this.zoomSmoothing = val, 14.0f, null
         );
         this.resettables.add(defaultDistSlider);
         this.resettables.add(zoomSmoothSlider);
         this.list.addEntry(new TwoWidgetEntry(defaultDistSlider, zoomSmoothSlider));
 
-        // Row 3: Min Distance & Max Distance
+        // Row 4: Min Distance & Max Distance
         ConfigSliderWidget minDistSlider = new ConfigSliderWidget(
                 "freelook.config.min_distance", "freelook.config.min_distance.tooltip",
                 0.5, 4.0, 0.5, 1, this.minDistance,
-                val -> this.minDistance = val, 1.5f
+                val -> this.minDistance = val, 1.5f, null
         );
         ConfigSliderWidget maxDistSlider = new ConfigSliderWidget(
                 "freelook.config.max_distance", "freelook.config.max_distance.tooltip",
                 5.0, 50.0, 1.0, 0, this.maxDistance,
-                val -> this.maxDistance = val, 25.0f
+                val -> this.maxDistance = val, 25.0f, null
         );
         this.resettables.add(minDistSlider);
         this.resettables.add(maxDistSlider);
         this.list.addEntry(new TwoWidgetEntry(minDistSlider, maxDistSlider));
 
-        // Row 4: Invert Scroll
+        // Row 5: Invert Scroll
         ConfigToggleButton invertScrollBtn = new ConfigToggleButton(
                 "freelook.config.invert_scroll", "freelook.config.invert_scroll.tooltip",
                 this.invertScroll, val -> this.invertScroll = val, false
@@ -155,22 +179,21 @@ public class FreeLookConfigScreen extends Screen {
         // ==================== CATEGORY 2: CAMERA ROTATION ====================
         this.list.addCategory(Text.translatable("freelook.config.category.camera").formatted(Formatting.YELLOW, Formatting.BOLD));
 
-        // Row 5: Camera Sensitivity & Camera Smoothing
+        // Row 6: Camera Sensitivity & Cinematic Smoothing Toggle
         ConfigSliderWidget sensSlider = new ConfigSliderWidget(
                 "freelook.config.camera_sensitivity", "freelook.config.camera_sensitivity.tooltip",
                 0.10, 3.00, 0.05, 2, this.cameraSensitivity,
-                val -> this.cameraSensitivity = val, 1.0f
+                val -> this.cameraSensitivity = val, 1.0f, null
         );
-        ConfigSliderWidget camSmoothSlider = new ConfigSliderWidget(
-                "freelook.config.camera_smoothing", "freelook.config.camera_smoothing.tooltip",
-                2.0, 30.0, 1.0, 0, this.cameraSmoothing,
-                val -> this.cameraSmoothing = val, 18.0f
+        ConfigToggleButton smoothCamBtn = new ConfigToggleButton(
+                "freelook.config.smooth_camera", "freelook.config.smooth_camera.tooltip",
+                this.smoothCamera, val -> this.smoothCamera = val, false
         );
         this.resettables.add(sensSlider);
-        this.resettables.add(camSmoothSlider);
-        this.list.addEntry(new TwoWidgetEntry(sensSlider, camSmoothSlider));
+        this.resettables.add(smoothCamBtn);
+        this.list.addEntry(new TwoWidgetEntry(sensSlider, smoothCamBtn));
 
-        // Row 6: Invert Mouse X & Invert Mouse Y
+        // Row 7: Invert Mouse X & Invert Mouse Y
         ConfigToggleButton invertXBtn = new ConfigToggleButton(
                 "freelook.config.invert_x", null,
                 this.invertX, val -> this.invertX = val, false
@@ -249,10 +272,12 @@ public class FreeLookConfigScreen extends Screen {
         private final int decimals;
         private final Consumer<Float> onApply;
         private final float defaultValue;
+        private final String zeroLabelKey;
 
         public ConfigSliderWidget(String key, String tooltipKey,
                                   double min, double max, double step, int decimals,
-                                  float initialValue, Consumer<Float> onApply, float defaultValue) {
+                                  float initialValue, Consumer<Float> onApply, float defaultValue,
+                                  String zeroLabelKey) {
             super(0, 0, 150, 20, ScreenTexts.EMPTY, (initialValue - min) / (max - min));
             this.key = key;
             this.min = min;
@@ -261,6 +286,7 @@ public class FreeLookConfigScreen extends Screen {
             this.decimals = decimals;
             this.onApply = onApply;
             this.defaultValue = defaultValue;
+            this.zeroLabelKey = zeroLabelKey;
 
             if (tooltipKey != null) {
                 this.setTooltip(Tooltip.of(Text.translatable(tooltipKey)));
@@ -271,6 +297,11 @@ public class FreeLookConfigScreen extends Screen {
         @Override
         protected void updateMessage() {
             double actual = getActualValue();
+            if (this.zeroLabelKey != null && actual <= 0.001) {
+                this.setMessage(Text.translatable(this.key, Text.translatable(this.zeroLabelKey)));
+                return;
+            }
+
             String formatted;
             if (decimals == 0) {
                 formatted = String.format(Locale.ROOT, "%.0f", actual);

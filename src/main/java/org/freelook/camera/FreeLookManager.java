@@ -105,17 +105,21 @@ public class FreeLookManager {
     }
 
     /**
-     * Initiates smooth return to the player's true look direction and eye position.
+     * Initiates return to the player's true look direction and eye position.
+     * If instantExit is enabled (default), instantly snaps back without transition delay.
      */
     public void stopFreeLook() {
         if (state == FreeLookState.FREELOOK || state == FreeLookState.ENTERING_FREELOOK) {
-            state = FreeLookState.EXITING_FREELOOK;
-            exitProgress = 0.0f;
-
-            exitStartYaw = lastRenderedYaw;
-            exitStartPitch = lastRenderedPitch;
-
-            exitStartDistance = currentDistance;
+            FreeLookConfig config = FreeLookConfig.getInstance();
+            if (config.getZoomInDuration() <= 0.001f) {
+                reset();
+            } else {
+                state = FreeLookState.EXITING_FREELOOK;
+                exitProgress = 0.0f;
+                exitStartYaw = lastRenderedYaw;
+                exitStartPitch = lastRenderedPitch;
+                exitStartDistance = currentDistance;
+            }
         }
     }
 
@@ -163,6 +167,7 @@ public class FreeLookManager {
 
     /**
      * Processes mouse movement during FreeLook.
+     * When smoothCamera is false (default), updates angles instantaneously without cinematic lag.
      */
     public void onMouseTurn(double dx, double dy) {
         if (!isFreeLookActive()) return;
@@ -182,6 +187,11 @@ public class FreeLookManager {
 
         targetCameraYaw += deltaYaw;
         targetCameraPitch = MathHelper.clamp(targetCameraPitch + deltaPitch, -90.0f, 90.0f);
+
+        if (!config.isSmoothCamera()) {
+            currentCameraYaw = MathHelper.wrapDegrees(targetCameraYaw);
+            currentCameraPitch = targetCameraPitch;
+        }
     }
 
     /**
@@ -208,7 +218,7 @@ public class FreeLookManager {
 
         // Update 3rd-person camera distance and state transitions
         if (state == FreeLookState.ENTERING_FREELOOK) {
-            float duration = Math.max(0.01f, config.getTransitionDuration());
+            float duration = Math.max(0.01f, config.getZoomOutDuration());
             transitionProgress += dt / duration;
             if (transitionProgress >= 1.0f) {
                 transitionProgress = 1.0f;
@@ -225,7 +235,7 @@ public class FreeLookManager {
                 currentDistance = targetDist;
             }
         } else if (state == FreeLookState.EXITING_FREELOOK) {
-            float duration = Math.max(0.01f, config.getTransitionDuration());
+            float duration = Math.max(0.001f, config.getZoomInDuration());
             exitProgress += dt / duration;
             float returnDist = wasFirstPerson ? 0.0f : config.getDefaultDistance();
             if (exitProgress >= 1.0f) {
@@ -239,19 +249,24 @@ public class FreeLookManager {
             }
         }
 
-        // Apply exponential smoothing to camera angles
+        // Apply exponential smoothing to camera angles only if smoothCamera is enabled
         if (state == FreeLookState.ENTERING_FREELOOK || state == FreeLookState.FREELOOK) {
-            float smoothFactor = 1.0f - (float) Math.exp(-config.getCameraSmoothing() * dt);
+            if (config.isSmoothCamera()) {
+                float smoothFactor = 1.0f - (float) Math.exp(-config.getCameraSmoothing() * dt);
 
-            // Shortest arc wrapping for yaw to prevent 360-degree meridian flip
-            float diffYaw = MathHelper.wrapDegrees(targetCameraYaw - currentCameraYaw);
-            currentCameraYaw += diffYaw * smoothFactor;
-            currentCameraYaw = MathHelper.wrapDegrees(currentCameraYaw);
+                // Shortest arc wrapping for yaw to prevent 360-degree meridian flip
+                float diffYaw = MathHelper.wrapDegrees(targetCameraYaw - currentCameraYaw);
+                currentCameraYaw += diffYaw * smoothFactor;
+                currentCameraYaw = MathHelper.wrapDegrees(currentCameraYaw);
 
-            // Pitch clamping and smoothing
-            float diffPitch = targetCameraPitch - currentCameraPitch;
-            currentCameraPitch += diffPitch * smoothFactor;
-            currentCameraPitch = MathHelper.clamp(currentCameraPitch, -90.0f, 90.0f);
+                // Pitch clamping and smoothing
+                float diffPitch = targetCameraPitch - currentCameraPitch;
+                currentCameraPitch += diffPitch * smoothFactor;
+                currentCameraPitch = MathHelper.clamp(currentCameraPitch, -90.0f, 90.0f);
+            } else {
+                currentCameraYaw = MathHelper.wrapDegrees(targetCameraYaw);
+                currentCameraPitch = targetCameraPitch;
+            }
         }
     }
 

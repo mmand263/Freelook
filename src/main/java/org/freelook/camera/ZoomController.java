@@ -28,14 +28,20 @@ public class ZoomController {
     public void onMouseScroll(double vertical) {
         if (Math.abs(vertical) < 1e-4) return;
         FreeLookConfig config = FreeLookConfig.getInstance();
-        float step = config.getDistanceStep();
+
+        // Default: vertical > 0 (wheel up) is zooming in (pulling camera forward)
+        //          vertical < 0 (wheel down) is zooming out (pulling camera back)
+        boolean isZoomingIn = vertical > 0;
+        if (config.isInvertScroll()) {
+            isZoomingIn = !isZoomingIn;
+        }
+
+        float step = isZoomingIn ? config.getZoomInStep() : config.getZoomOutStep();
         float delta = (float) (Math.signum(vertical) * step);
         if (config.isInvertScroll()) {
             delta = -delta;
         }
 
-        // Wheel down (vertical < 0) -> delta < 0 -> targetDistance increases (camera pulls back)
-        // Wheel up (vertical > 0) -> delta > 0 -> targetDistance decreases (camera pulls forward)
         targetDistance = MathHelper.clamp(
                 targetDistance - delta,
                 config.getMinDistance(),
