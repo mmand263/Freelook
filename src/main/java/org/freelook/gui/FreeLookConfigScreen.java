@@ -102,8 +102,8 @@ public class FreeLookConfigScreen extends Screen {
         this.resettables.clear();
 
         int listTop = 32;
-        int listBottom = this.height - 40;
-        this.list = new ConfigListWidget(this.client, this.width, this.height, listTop, listBottom, 26);
+        int listHeight = this.height - listTop - 40;
+        this.list = new ConfigListWidget(this.client, this.width, listHeight, listTop, 26);
 
         // ==================== CATEGORY 1: ZOOM & TRANSITION ====================
         this.list.addCategory(Text.translatable("freelook.config.category.zoom").formatted(Formatting.YELLOW, Formatting.BOLD));
@@ -254,6 +254,7 @@ public class FreeLookConfigScreen extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+        this.renderBackground(context, mouseX, mouseY, delta);
         super.render(context, mouseX, mouseY, delta);
         context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 14, 0xFFFFFF);
     }
@@ -378,8 +379,8 @@ public class FreeLookConfigScreen extends Screen {
     // ==================== LIST AND ENTRY CLASSES ====================
 
     public static class ConfigListWidget extends ElementListWidget<ConfigListWidget.Entry> {
-        public ConfigListWidget(MinecraftClient client, int width, int height, int top, int bottom, int itemHeight) {
-            super(client, width, height, top, bottom, itemHeight);
+        public ConfigListWidget(MinecraftClient client, int width, int height, int y, int itemHeight) {
+            super(client, width, height, y, itemHeight);
         }
 
         @Override

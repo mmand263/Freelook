@@ -2,7 +2,7 @@ package org.freelook.mixin.client;
 
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.util.math.MatrixStack;
+import org.joml.Matrix4f;
 import org.freelook.camera.FreeLookManager;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -21,7 +21,7 @@ public abstract class GameRendererMixin {
         at = @At("HEAD"),
         cancellable = true
     )
-    private void onRenderHand(MatrixStack matrices, Camera camera, float tickDelta, CallbackInfo ci) {
+    private void onRenderHand(Camera camera, float tickDelta, Matrix4f matrix4f, CallbackInfo ci) {
         if (FreeLookManager.getInstance().isCameraOverridden()) {
             ci.cancel();
         }

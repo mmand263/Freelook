@@ -28,7 +28,7 @@ public abstract class CameraMixin {
     @Shadow protected abstract void setRotation(float yaw, float pitch);
     @Shadow protected abstract void setPos(double x, double y, double z);
     @Shadow protected abstract void moveBy(double x, double y, double z);
-    @Shadow protected abstract double clipToSpace(double desiredCameraDistance);
+    @Shadow protected abstract float clipToSpace(float desiredCameraDistance);
 
     /**
      * Intercepts Camera.update at RETURN.
@@ -59,7 +59,7 @@ public abstract class CameraMixin {
 
             double distance = manager.getCurrentDistance();
             if (distance > 0.001) {
-                double clipped = this.clipToSpace(distance);
+                float clipped = this.clipToSpace((float) distance);
                 this.moveBy(-clipped, 0.0, 0.0);
             }
         }
