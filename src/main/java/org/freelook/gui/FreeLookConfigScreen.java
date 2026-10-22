@@ -398,7 +398,7 @@ public class FreeLookConfigScreen extends Screen {
         }
 
         @Override
-        protected int getScrollbarPositionX() {
+        protected int getScrollbarX() {
             return (this.width / 2) + 165;
         }
 
